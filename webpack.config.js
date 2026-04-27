@@ -421,95 +421,49 @@ module.exports = (env, argv) => ({
   ].filter(Boolean),
 
   // http://bit.ly/2WEpbgZ
-  devServer: {
-    /*
-      http://bit.ly/2WHYfwO
-      Tell the dev server where to serve content from.
-      This is only necessary if you want to serve static files.
-      Content not served from Webpack's devServer is served from here.
-    */
-    contentBase: path.resolve(__dirname, 'dist'),
+    devServer: {
+    // 1. Rename 'contentBase' to 'static'
+    static: {
+      directory: path.resolve(__dirname, 'dist'),
+      watch: true, // This replaces 'watchContentBase'
+    },
 
-    /*
-      http://bit.ly/2WFe8nS
-      '...the index.html page will likely have to be served
-      in place of any 404 responses.'
-    */
     historyApiFallback: true,
-
-    /*
-      http://bit.ly/2WOwJhr
-      Want to view your site on your phone?
-      Make sure your computer and phone are on the same wifi network,
-      and navigate to your computer's ip addres: 192.1.2.3:<dev server port>
-      The actual url will be printed to the console in development thanks to the
-      `AfterCompilePlugin`.
-    */
     host: '0.0.0.0',
-
-    // http://bit.ly/2WOx4kd
     open: true,
-
-    // http://bit.ly/2WFzCkq
     port: DEV_SERVER_PORT,
 
-    /*
-      http://bit.ly/2WIXOSV, http://bit.ly/2WDMWpv
-      Nobody wants to see 0.0.0.0 in the browser. This get's rid of that.
-    */
-    public: `http://localhost:${DEV_SERVER_PORT}`,
+    // 2. 'public' is now 'client.webSocketURL'
+    client: {
+      webSocketURL: `http://localhost:${DEV_SERVER_PORT}`,
+      // 3. Move 'overlay' inside 'client'
+      overlay: {
+        warnings: false,
+        errors: false,
+      },
+    },
 
-    /*
-      http://bit.ly/2XlEOXN
-      Redirect non-static asset calls to the backend API server.
-      Unrecognized urls (non-API calls) will be directed to '/'.
-      404's will be served `index.html` by `historyApiFallback` above.
-    */
+    // 4. Convert 'proxy' to an array
     proxy: API_WEBPACK
-      ? {
-          [API_WEBPACK]: {
+      ? [
+          {
+            context: [API_WEBPACK],
             target: `http://localhost:${API_PORT}`,
-            bypass(req, res, proxyOptions) {
-              // Direct all non-get requests to the API server.
-              if (req.method.toLowerCase() !== 'get') return
-
-              /*
-            Proxy url (browser) requests back to '/'
-            and let the front end do all the routing.
-            For all others, let the API server respond.
-          */
-
-              /*
-            http://bit.ly/2XlEOXN
-            Url / browser request - allow front end routing to handle all the things.
-          */
-              if ((req.headers.accept || '').includes('html')) return '/'
-
-              // Let the API server respond by implicitly returning here.
+            onProxyReq: (proxyReq, req, res) => {
+               // Your custom logic for non-GET requests if needed
+            },
+            bypass: (req, res) => {
+              if (req.method.toLowerCase() !== 'get') return;
+              if ((req.headers.accept || '').includes('html')) return '/';
             },
           },
-        }
-      : {},
+        ]
+      : [],
 
-    // https://bit.ly/3nM4mL0
-    watchContentBase: true,
-
-    // https://bit.ly/2WQBndb
     hot: true,
-
-    // https://bit.ly/3mIacvB
-    inline: true,
-
-    /*
-      https://bit.ly/37EzOVO
-      We disable both of these because the ReactRefresh plugin will put a
-      verbose error on the screen showing where the error occured.
-    */
-    overlay: {
-      warnings: false,
-      errors: false,
-    },
+    // 5. 'inline' is removed (it's now default/always on)
   },
+
 
   /*
     https://bit.ly/3rdPV4o
